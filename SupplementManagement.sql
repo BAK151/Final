@@ -17,7 +17,7 @@ CREATE TABLE SupProduct
 CREATE TABLE Stock 
 (
 	StockID nvarchar(6) NOT NULL PRIMARY KEY,
-	DateGet date NOT NULL DEFAULT GETDATE(),
+	DateGet date NOT NULL DEFAULT GETDATE()
 )
 
 CREATE TABLE StockInfo
@@ -68,12 +68,10 @@ CREATE TABLE Report
 
 Alter table SupProduct
 Add constraint fk_sp_sc foreign key (SCategoryID) references SupCategory(SCategoryID)
-Alter table Stock
+Alter table StockInfo
 Add constraint fk_s_sp foreign key (ProID) references SupProduct(ProID)
 Alter table StockInfo
 Add constraint fk_si_b foreign key (StockID) references Stock (StockID)
-Alter table StockInfo
-Add constraint fk_si_f foreign key (ProID) references SupProduct (ProID)
 Alter table Bill
 Add constraint fk_b_a foreign key (AgencyID) references Agency(AgencyID)
 Alter table BillInfo
@@ -130,22 +128,116 @@ INSERT INTO SupProduct Values ('P605','PRE ABE','SC06','35000')
 INSERT INTO SupProduct Values ('P701','Bottle1000ML','SC07','60000')
 INSERT INTO SupProduct Values ('P702','HandProtect','SC07','60000')
 
-/*INSERT INTO Bill Values ('B01',GETDATE(),'A01','No')
-INSERT INTO BillInfo Values ('B01','P701',10,'NoTransfer')
-INSERT INTO BillInfo Values ('B01','P702',10,'NoTransfer')
-INSERT INTO BillInfo Values ('B01','P601',10,'NoTransfer')
 
-Select ProName, bi.Amount, s.Price*bi.Amount as 'Total'
-From SupProduct s inner join BillInfo bi on s.ProID = bi.ProID inner join Bill b on b.BillID = bi.BillID
-Where b.BillID = 'B01'*/
+INSERT INTO Stock Values ('S01',GETDATE())
+INSERT INTO Stock Values ('S02',GETDATE())
+INSERT INTO Stock Values ('S03',GETDATE())
+INSERT INTO Stock Values ('S04',GETDATE())
+INSERT INTO StockInfo Values ('S01','P101',10)
+INSERT INTO StockInfo Values ('S02','P101',30)
+INSERT INTO StockInfo Values ('S03','P102',30)
+INSERT INTO StockInfo Values ('S04','P101',10)
 
+--Select * from StockInfo
 
-Go
-create proc Income
+INSERT INTO Agency Values ('A01','THUY','123456')
+INSERT INTO Agency Values ('A02','KHOI','987654')
+INSERT INTO Agency Values ('A03','THUY2','2586431')
+INSERT INTO Agency Values ('A04','THUY3','46852')
+INSERT INTO Agency Values ('A05','KHOI1','741953')
+
+INSERT INTO Bill Values ('B01',GETDATE(),'A01','No')
+INSERT INTO Bill Values ('B02',GETDATE(),'A01','No')
+INSERT INTO Bill Values ('B03',GETDATE(),'A01','No')
+INSERT INTO Bill Values ('B04',GETDATE(),'A01','No')
+INSERT INTO Bill Values ('B05',GETDATE(),'A01','No')
+INSERT INTO Bill Values ('B06',GETDATE(),'A05','No')
+INSERT INTO BillInfo Values ('B01','P502',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B01','P302',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B02','P101',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B02','P102',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B03','P101',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B03','P103',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B04','P102',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B04','P104',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B05','P102',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B05','P202',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B06','P105',10,'NoTransfer')
+INSERT INTO BillInfo Values ('B06','P501',10,'NoTransfer')
+
+create proc AllStock
 as
 begin
-select b.BillID, DateBuy,Sum(Price*bi.Amount) as 'Total'
-from SupProduct s inner join BillInfo bi on s.ProID = bi.ProID
-	inner join Bill b on b.BillID = bi.BillID
-group by b.BillID, DateBuy
+select StockID, DateGet
+from Stock
+order by StockID desc
 end
+
+create proc StockInfotoListView
+@StockID nvarchar(6)
+as
+begin
+select ProName, si.Amount,Price, Price*si.Amount as 'Total'
+from SupProduct sp inner join StockInfo si on sp.ProID = si.ProID
+	inner join Stock s on s.StockID = si.StockID
+where s.StockID = @StockID
+end
+
+create proc SearchProduct
+@ProName nvarchar(100)
+as
+begin
+select * from SupProduct where ProName like @ProName
+end
+
+create proc AllBill
+as
+begin
+select BillID, DateBuy, AgencyID, StatusPay
+from Bill
+order by BillID desc
+end
+
+create proc BillInfotoListView
+@BillID nvarchar(6)
+as
+begin
+select ProName, bi.Amount,Price, Price*bi.Amount as 'Total'
+from SupProduct sp inner join BillInfo bi on sp.ProID = bi.ProID
+	inner join Bill b on b.BillID = bi.BillID
+where b.BillID = @BillID
+end
+
+--exec AllBill
+
+
+
+create proc GetProductById
+@ProID nvarchar(6),
+@Thang Date
+as
+begin
+select bi.ProID, MONTH(DateBuy) as 'Thang', Sum(bi.Amount) as 'Total'
+from BillInfo bi inner join Bill b on b.BillID = bi.BillID
+where MONTH(@Thang) = MONTH(DateBuy) and Year(@Thang) = Year(DateBuy) and @ProID  = bi.ProID
+group by bi.ProID, DateBuy
+end
+
+
+--exec GetProductById 'P102', '12-11-2022'
+
+create proc GetProductImportById
+@ProID nvarchar(6),
+@Thang Date
+as
+begin
+select si.ProID, MONTH(DateGet) as 'Thang', Sum(si.Amount) as 'Total'
+from StockInfo si inner join Stock s on s.StockID = si.StockID
+where MONTH(@Thang) = MONTH(DateGet) and Year(@Thang) = Year(DateGet) and @ProID  = si.ProID
+group by si.ProID, DateGet
+end
+
+--exec GetProductImportById 'P101', '12-11-2022'
+
+--exec AllBill
+
